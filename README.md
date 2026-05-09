@@ -1,49 +1,29 @@
 # bootfire
 
-[Docs site](https://btrainwilson.github.io/bootfire/) ·
-[Integrations](https://btrainwilson.github.io/bootfire/docs/integrations)
+[![License: MIT](https://img.shields.io/badge/license-MIT-8b2a0e?style=flat-square)](LICENSE)
+[![Docs](https://img.shields.io/badge/docs-pages-d4a017?style=flat-square)](https://btrainwilson.github.io/bootfire/)
+[![POSIX sh](https://img.shields.io/badge/posix-sh-d2691e?style=flat-square)](#)
+[![Shells](https://img.shields.io/badge/shells-fish%20%7C%20bash%20%7C%20zsh-a0522d?style=flat-square)](#)
 
-Fuzzy-find a project directory, `cd` into it, and run its `start.sh`.
+_Fuzzy-find a project directory, `cd` into it, and run its `start.sh`._
 
-One keystroke from "where do I want to go" to "I'm in the project and it's
-running." A small POSIX shell script around `fzf` and `fd`, plus a fish or
-bash/zsh wrapper for the `cd`.
+> [!TIP]
+> Full documentation lives at <https://btrainwilson.github.io/bootfire/> — this README is the short version.
+
+---
 
 ## Install
-
-### curl | sh
 
 ```sh
 curl -fsSL https://btrainwilson.github.io/bootfire/install.sh | sh
 ```
 
-(The raw GitHub URL —
-`https://raw.githubusercontent.com/btrainwilson/bootfire/main/install.sh`
-— also works, and pins to a commit if you append `?ref=<sha>`.)
+The installer ensures `fzf` and `fd` are installed, clones bootfire to
+`~/.local/share/bootfire`, symlinks the `bootfire` binary into
+`~/.local/bin`, copies default config to `~/.config/bootfire/`, and
+prints the `source` line to add to your shell rc.
 
-The installer:
-
-- ensures `fzf` and `fd` are installed (via your package manager),
-- clones bootfire to `~/.local/share/bootfire`,
-- symlinks the `bootfire` binary into `~/.local/bin`,
-- copies default config to `~/.config/bootfire/`,
-- prints the `source` line to add to your shell rc.
-
-### Manual
-
-```sh
-git clone https://github.com/btrainwilson/bootfire.git
-cd bootfire
-make install
-```
-
-You'll need `fzf` and `fd` installed yourself. On Debian/Ubuntu, `fd` is
-packaged as `fd-find`; create an `fd` symlink (the `curl | sh` installer
-does this automatically).
-
-### Shell hook
-
-Add **one** of these to your shell rc:
+Then add **one** of these to your shell rc:
 
 ```fish
 # ~/.config/fish/config.fish
@@ -55,46 +35,64 @@ source ~/.local/share/bootfire/shell/bootfire.fish
 source ~/.local/share/bootfire/shell/bootfire.sh
 ```
 
-## Usage
+<details><summary>Manual install</summary>
 
 ```sh
-bootfire add ~/code           # register a project root
-bootfire add ~/work
-bootfire                      # fuzzy-pick a directory; cd; run start.sh if present
-bootfire -c                   # cd-only, skip start.sh
-bootfire list                 # show configured roots
-bootfire rm ~/work            # remove a root
-bootfire --edit               # open the config in $EDITOR
+git clone https://github.com/btrainwilson/bootfire.git
+cd bootfire
+make install
 ```
 
-Drop a `start.sh` in any project. It runs after `cd`. Put whatever boot
-ritual you want inside it — start a dev server, open tmux windows, source
-a venv. bootfire stays out of your way.
+You'll need `fzf` and `fd` yourself. On Debian/Ubuntu, `fd` is packaged
+as `fd-find` — symlink it as `fd` (the `curl | sh` installer does this
+automatically).
+</details>
 
-See **[Integrations](docs/integrations.md)** for working snippets:
-tmux, zellij, Neovim/telescope, direnv, mise, and a per-language
-`start.sh` template pattern.
+---
+
+## Usage
+
+| Command | What it does |
+|---|---|
+| `bootfire` | fuzzy-pick → `cd` → run `./start.sh` if present |
+| `bootfire -c` | `cd`-only, skip `start.sh` |
+| `bootfire add <path>` | register a project root |
+| `bootfire rm <path>` | remove a project root |
+| `bootfire list` | print configured roots |
+| `bootfire --edit` | open the config in `$EDITOR` |
+
+Drop a `start.sh` in any project. It runs after `cd`. Whatever boot
+ritual you want — dev server, tmux windows, virtualenv — goes inside
+that script. bootfire stays out of your way.
+
+> [!NOTE]
+> See **[Integrations](https://btrainwilson.github.io/bootfire/integrations/)** for working `start.sh` snippets:
+> tmux, zellij, Neovim/telescope, direnv, mise, and a per-language
+> template pattern.
+
+---
 
 ## How ranking works
 
 Candidates come from walking each configured root with `fd` (so each
-repo's `.gitignore` is respected, plus the global ignore list at
+repo's `.gitignore` is respected, plus the global ignore at
 `~/.config/bootfire/ignore`). Each candidate is scored by frecency:
 
-```
-score = count * w(age)
-w(age) = 4.0  if age < 1h
-       = 2.0  if age < 1d
-       = 1.0  if age < 7d
-       = 0.25 otherwise
-```
+| Age of last visit | Weight |
+|---|---|
+| < 1 hour | 4.0 |
+| < 1 day  | 2.0 |
+| < 7 days | 1.0 |
+| ≥ 7 days | 0.25 |
 
-Frecency only updates when bootfire itself selects a directory — there
-are no shell hooks. New directories you've never picked start at score 0
-and rank by alphabetical fall-through.
+Score is `count * weight`. Frecency updates **only** when bootfire
+itself selects a directory — no shell hooks. New directories start at
+score 0 and rank by alphabetical fall-through. `fzf` orders by match
+quality first; frecency breaks ties (`--tiebreak=index`).
 
-`fzf` reorders by match quality first; the frecency ranking acts as the
-tiebreak (`--tiebreak=index`).
+Full rationale: [How it works](https://btrainwilson.github.io/bootfire/how-it-works/).
+
+---
 
 ## Config
 
@@ -107,29 +105,24 @@ max_depth=4
 start_script=start.sh
 ```
 
-`~/.config/bootfire/ignore` is a `.gitignore`-style file applied on top
-of each repo's own `.gitignore`.
+`~/.config/bootfire/ignore` is `.gitignore`-style; layered on top of
+each repo's own `.gitignore`. Frecency data lives at
+`~/.local/share/bootfire/frecency` (TSV: `path<TAB>count<TAB>last_ts`).
 
-Frecency data lives at `~/.local/share/bootfire/frecency` (TSV:
-`path<TAB>count<TAB>last_ts`).
+---
 
-## Uninstall
+<details><summary>Dependencies</summary>
 
-```sh
-make uninstall
-```
+| Tool | Purpose |
+|---|---|
+| `fzf` | the fuzzy picker |
+| `fd` | the directory walker (called as `fd`, not `fdfind`) |
+| POSIX `sh` | the core script |
+| `fish` 3+ / `bash` 4+ / `zsh` 5+ | for the wrapper |
 
-Or remove the symlink and install dir manually:
+</details>
 
-```sh
-rm ~/.local/bin/bootfire
-rm -rf ~/.local/share/bootfire
-```
-
-Config and frecency data are left in place. Remove `~/.config/bootfire`
-and `~/.local/share/bootfire` if you want a full wipe.
-
-## Tests
+<details><summary>Tests</summary>
 
 ```sh
 make test
@@ -137,11 +130,25 @@ make test
 
 Runs the frecency unit test and the end-to-end smoke test against an
 isolated XDG home — won't touch your real config.
+</details>
 
-## Dependencies
+<details><summary>Uninstall</summary>
 
-- `fzf`
-- `fd` (called as `fd`, not `fdfind` — the installer creates a shim on
-  Debian/Ubuntu)
-- POSIX `sh` for the core; `fish` 3+ or `bash` 4+ / `zsh` 5+ for the
-  wrapper.
+```sh
+make uninstall
+```
+
+Or remove manually:
+
+```sh
+rm ~/.local/bin/bootfire
+rm -rf ~/.local/share/bootfire
+```
+
+Config and frecency data are left in place. Remove
+`~/.config/bootfire` and `~/.local/share/bootfire` for a full wipe.
+</details>
+
+---
+
+MIT licensed. See [LICENSE](LICENSE).

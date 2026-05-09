@@ -1,6 +1,8 @@
 ---
-layout: default
 title: Integrations
+nav_order: 5
+permalink: /integrations/
+has_toc: true
 ---
 
 # Integrations

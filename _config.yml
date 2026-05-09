@@ -3,12 +3,33 @@ description: Fuzzy-find a project directory, cd into it, and run start.sh.
 url: https://btrainwilson.github.io
 baseurl: /bootfire
 
-theme: jekyll-theme-cayman
+remote_theme: just-the-docs/just-the-docs
+plugins:
+  - jekyll-remote-theme
+  - jekyll-seo-tag
 
-# Source of the site is the repo root so install.sh stays at /install.sh.
-# The directories below are excluded from Jekyll processing — they're code,
-# not content. Excluding them keeps the build fast and avoids accidental
-# rendering of shell scripts.
+color_scheme: bootfire
+search_enabled: true
+search:
+  heading_level: 3
+  previews: 2
+  preview_words_before: 3
+  preview_words_after: 3
+heading_anchors: true
+
+aux_links:
+  "GitHub":
+    - "//github.com/btrainwilson/bootfire"
+aux_links_new_tab: true
+
+nav_external_links:
+  - title: Source
+    url: https://github.com/btrainwilson/bootfire
+    hide_icon: false
+
+footer_content: 'bootfire — MIT licensed.'
+
+# The repo root is the site root so /install.sh stays accessible.
 exclude:
   - bin/
   - shell/
@@ -20,13 +41,7 @@ exclude:
   - vendor/
   - Gemfile
   - Gemfile.lock
+  - node_modules/
 
-# Show install.sh as a downloadable file rather than a Jekyll page.
 keep_files:
   - install.sh
-
-defaults:
-  - scope:
-      path: ""
-    values:
-      layout: default

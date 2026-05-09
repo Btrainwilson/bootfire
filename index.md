@@ -1,52 +1,48 @@
 ---
-layout: default
-title: bootfire
+title: Home
+nav_order: 1
+permalink: /
 ---
 
 # bootfire
+{: .fs-9 }
 
-> Fuzzy-find a project directory, `cd` into it, and run its `start.sh`.
+Fuzzy-find a project directory, `cd` into it, and run its `start.sh`.
+{: .fs-5 .fw-300 }
 
-One keystroke from "where do I want to go" to "I'm in the project and it's
-running."
+One keystroke from "where do I want to go" to "I'm in the project and
+it's running." A small POSIX shell script around `fzf` and `fd`, plus a
+fish or bash/zsh wrapper for the `cd`.
 
-## Install
+[Install](./install/){: .btn .btn-primary .mr-2 }
+[View on GitHub](https://github.com/btrainwilson/bootfire){: .btn }
+
+---
+
+## Quick start
 
 ```sh
 curl -fsSL https://btrainwilson.github.io/bootfire/install.sh | sh
 ```
 
-The installer ensures `fzf` and `fd` are present, clones the repo into
-`~/.local/share/bootfire`, copies default config, and prints the line to
-add to your shell rc.
-
-## At a glance
+Add the printed `source` line to your shell rc, open a new shell, then:
 
 ```sh
 bootfire add ~/code      # register a project root
-bootfire                 # fuzzy-pick → cd → run ./start.sh
-bootfire -c              # cd-only, skip start.sh
-bootfire list            # show roots
-bootfire --edit          # open config in $EDITOR
+bootfire                 # fuzzy-pick → cd → run ./start.sh if present
 ```
+
+That's the loop. Drop a `start.sh` in any project and bootfire runs it
+on entry — anything else (tmux, dev servers, virtualenv activation)
+lives inside that script.
 
 ## Where to go next
 
-- **[Integrations](./docs/integrations)** — tmux, Neovim/telescope, zellij,
-  direnv, mise, and other ways to wire bootfire into your workflow.
-- **[README](https://github.com/btrainwilson/bootfire#readme)** — full
-  documentation, configuration, dependencies.
-- **[Source](https://github.com/btrainwilson/bootfire)** — GitHub repo.
-
-## How it works (in two paragraphs)
-
-The `bootfire` binary is a POSIX shell script that walks each configured root
-with `fd` (so each repo's `.gitignore` is respected, plus a global ignore
-file at `~/.config/bootfire/ignore`), scores candidates by frecency, and
-hands the ranked list to `fzf`. It prints the selected path and exits.
-
-A small fish or bash/zsh function wraps the core so it can `cd` your
-shell into the chosen path and execute `./start.sh` if present. Tmux
-windows, dev servers, virtualenv activation — anything you want to
-happen on entry — goes inside the project's own `start.sh`. bootfire
-never knows or cares about the contents.
+- **[Install](./install/)** — every install path, including manual and
+  per-shell hooks.
+- **[Usage](./usage/)** — every subcommand and flag, with examples.
+- **[Config](./config/)** — config file format, ignore rules, paths.
+- **[Integrations](./integrations/)** — tmux, Neovim/telescope, zellij,
+  direnv, mise, per-language templates.
+- **[How it works](./how-it-works/)** — the frecency math, the walker,
+  why no shell hooks.
