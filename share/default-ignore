@@ -1,0 +1,17 @@
+# bootfire global ignore. .gitignore syntax. Applied on top of each
+# repo's own .gitignore (which fd respects automatically).
+.git/
+node_modules/
+.venv/
+venv/
+__pycache__/
+target/
+dist/
+build/
+.next/
+.cache/
+.tox/
+.mypy_cache/
+.pytest_cache/
+.idea/
+.vscode/

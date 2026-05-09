@@ -1,0 +1,217 @@
+#!/bin/sh
+# bootfire-core: POSIX sh entry point. Walks configured roots, ranks by
+# frecency, hands the candidate list to fzf, and prints the selected
+# path. Never cd's — that's the shell wrapper's job.
+
+set -eu
+
+NAME="bootfire"
+CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}/$NAME"
+DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/$NAME"
+CONFIG_FILE="$CONFIG_HOME/config"
+IGNORE_FILE="$CONFIG_HOME/ignore"
+FRECENCY_FILE="$DATA_HOME/frecency"
+
+TAB="$(printf '\t')"
+
+ensure_runtime_dirs() {
+    mkdir -p "$CONFIG_HOME" "$DATA_HOME"
+    [ -f "$FRECENCY_FILE" ] || : > "$FRECENCY_FILE"
+}
+
+require() {
+    command -v "$1" >/dev/null 2>&1 || {
+        printf '%s: missing dependency: %s\n' "$NAME" "$1" >&2
+        printf 'Install it and re-run, or rerun the bootfire installer.\n' >&2
+        exit 127
+    }
+}
+
+expand_tilde() {
+    case "$1" in
+        '~')   printf '%s\n' "$HOME" ;;
+        '~/'*) printf '%s\n' "$HOME/${1#~/}" ;;
+        *)     printf '%s\n' "$1" ;;
+    esac
+}
+
+get_setting() {
+    key="$1"; default="$2"
+    [ -f "$CONFIG_FILE" ] || { printf '%s\n' "$default"; return; }
+    val="$(awk -F= -v k="$key" '$1 == k { print $2; exit }' "$CONFIG_FILE")"
+    printf '%s\n' "${val:-$default}"
+}
+
+get_roots() {
+    [ -f "$CONFIG_FILE" ] || return 0
+    awk -F= '/^root=/ { sub(/^root=/, ""); print }' "$CONFIG_FILE" |
+        while IFS= read -r r; do
+            [ -n "$r" ] && expand_tilde "$r"
+        done
+}
+
+cmd_help() {
+    cat <<EOF
+$NAME — fuzzy-find a project directory and run its start.sh
+
+Usage:
+  $NAME                   fuzzy-find and deploy
+  $NAME -c, --cd-only     fuzzy-find and cd only (skip start.sh)
+  $NAME add <path>        add a project root to the config
+  $NAME rm <path>         remove a project root from the config
+  $NAME list              list configured roots
+  $NAME --edit            open the config in \$EDITOR
+  $NAME -h, --help        show this help
+
+Config: $CONFIG_FILE
+Ignore: $IGNORE_FILE
+Data:   $FRECENCY_FILE
+EOF
+}
+
+cmd_add() {
+    [ $# -ge 1 ] || { printf 'usage: %s add <path>\n' "$NAME" >&2; exit 2; }
+    raw="$1"
+    expanded="$(expand_tilde "$raw")"
+    target="$(cd "$expanded" 2>/dev/null && pwd)" || {
+        printf '%s: not a directory: %s\n' "$NAME" "$raw" >&2
+        exit 1
+    }
+    ensure_runtime_dirs
+    [ -f "$CONFIG_FILE" ] || : > "$CONFIG_FILE"
+    if grep -Fxq "root=$target" "$CONFIG_FILE"; then
+        printf '%s: already a root: %s\n' "$NAME" "$target"
+        return 0
+    fi
+    printf 'root=%s\n' "$target" >> "$CONFIG_FILE"
+    printf 'added root: %s\n' "$target"
+}
+
+cmd_rm() {
+    [ $# -ge 1 ] || { printf 'usage: %s rm <path>\n' "$NAME" >&2; exit 2; }
+    raw="$1"
+    expanded="$(expand_tilde "$raw")"
+    target="$(cd "$expanded" 2>/dev/null && pwd)" || target="$expanded"
+    [ -f "$CONFIG_FILE" ] || return 0
+    tmp="$(mktemp)"
+    grep -Fxv "root=$target" "$CONFIG_FILE" > "$tmp" || true
+    mv "$tmp" "$CONFIG_FILE"
+    printf 'removed root: %s\n' "$target"
+}
+
+cmd_list() {
+    get_roots
+}
+
+cmd_edit() {
+    ensure_runtime_dirs
+    [ -f "$CONFIG_FILE" ] || : > "$CONFIG_FILE"
+    "${EDITOR:-vi}" "$CONFIG_FILE"
+}
+
+cmd_bump() {
+    [ $# -ge 1 ] && [ -n "$1" ] || return 0
+    ensure_runtime_dirs
+    target="$1"
+    now="$(date +%s)"
+    tmp="$(mktemp)"
+    awk -v path="$target" -v now="$now" -F"$TAB" -v OFS="$TAB" '
+        $1 == path { print path, ($2 + 1), now; found = 1; next }
+        { print }
+        END { if (!found) print path, 1, now }
+    ' "$FRECENCY_FILE" > "$tmp"
+    mv "$tmp" "$FRECENCY_FILE"
+}
+
+cmd_select() {
+    require fd
+    require fzf
+
+    [ -f "$CONFIG_FILE" ] || {
+        printf '%s: no config at %s\n' "$NAME" "$CONFIG_FILE" >&2
+        printf 'Run `%s add <path>` to add a project root.\n' "$NAME" >&2
+        exit 1
+    }
+    ensure_runtime_dirs
+
+    max_depth="$(get_setting max_depth 4)"
+
+    roots_tmp="$(mktemp)"
+    candidates="$(mktemp)"
+    scored="$(mktemp)"
+    trap 'rm -f "$roots_tmp" "$candidates" "$scored"' EXIT
+
+    get_roots > "$roots_tmp"
+    if [ ! -s "$roots_tmp" ]; then
+        printf '%s: no roots configured. Run `%s add <path>`.\n' "$NAME" "$NAME" >&2
+        exit 1
+    fi
+
+    fd_args="--type d --hidden --max-depth $max_depth"
+    if [ -f "$IGNORE_FILE" ]; then
+        fd_args="$fd_args --ignore-file $IGNORE_FILE"
+    fi
+
+    while IFS= read -r root; do
+        [ -d "$root" ] || continue
+        # Strip trailing slash so candidate paths match what --bump records.
+        root="${root%/}"
+        printf '%s\n' "$root" >> "$candidates"
+        # shellcheck disable=SC2086
+        fd $fd_args . "$root" 2>/dev/null | sed 's|/$||' >> "$candidates" || true
+    done < "$roots_tmp"
+
+    if [ ! -s "$candidates" ]; then
+        printf '%s: no directories found under configured roots.\n' "$NAME" >&2
+        exit 1
+    fi
+
+    awk -v frecf="$FRECENCY_FILE" -v now="$(date +%s)" -F"$TAB" -v OFS="$TAB" '
+        BEGIN {
+            while ((getline line < frecf) > 0) {
+                n = split(line, a, "\t")
+                if (n >= 3) {
+                    counts[a[1]] = a[2]
+                    last_ts[a[1]] = a[3]
+                }
+            }
+            close(frecf)
+        }
+        {
+            path = $0
+            c = counts[path] + 0
+            score = 0
+            if (c > 0) {
+                age = now - (last_ts[path] + 0)
+                if (age < 3600)        w = 4.0
+                else if (age < 86400)  w = 2.0
+                else if (age < 604800) w = 1.0
+                else                   w = 0.25
+                score = c * w
+            }
+            printf "%.4f\t%s\n", score, path
+        }
+    ' "$candidates" |
+        sort -t"$TAB" -k1,1 -nr |
+        cut -f2- |
+        awk '!seen[$0]++' > "$scored"
+
+    if [ "${BOOTFIRE_PRINT_CANDIDATES:-0}" = "1" ]; then
+        cat "$scored"
+        return 0
+    fi
+
+    fzf --tiebreak=index --prompt='deploy> ' --height=40% --reverse "$@" < "$scored" || true
+}
+
+ensure_runtime_dirs
+
+case "${1:-}" in
+    -h|--help)   cmd_help; exit 0 ;;
+    --bump)      shift; cmd_bump "$@"; exit 0 ;;
+    add)         shift; cmd_add "$@"; exit 0 ;;
+    rm)          shift; cmd_rm "$@"; exit 0 ;;
+    list)        cmd_list; exit 0 ;;
+    --edit)      cmd_edit; exit 0 ;;
+    *)           cmd_select "$@" ;;
+esac

@@ -1,0 +1,32 @@
+title: bootfire
+description: Fuzzy-find a project directory, cd into it, and run start.sh.
+url: https://btrainwilson.github.io
+baseurl: /bootfire
+
+theme: jekyll-theme-cayman
+
+# Source of the site is the repo root so install.sh stays at /install.sh.
+# The directories below are excluded from Jekyll processing — they're code,
+# not content. Excluding them keeps the build fast and avoids accidental
+# rendering of shell scripts.
+exclude:
+  - bin/
+  - shell/
+  - share/
+  - tests/
+  - Makefile
+  - LICENSE
+  - .gitignore
+  - vendor/
+  - Gemfile
+  - Gemfile.lock
+
+# Show install.sh as a downloadable file rather than a Jekyll page.
+keep_files:
+  - install.sh
+
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default
