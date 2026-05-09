@@ -129,22 +129,29 @@ wire_shell_hook() {
         say "skipping shell hook (BOOTFIRE_NO_SHELL_HOOK=1)"
         return 0
     fi
-    case "${SHELL:-}" in
-        */fish)
-            wire_fish
-            ;;
-        */zsh)
-            wire_posix_rc "$HOME/.zshrc" \
-                "source $INSTALL_DIR/shell/$NAME.sh"
-            ;;
-        */bash)
-            wire_posix_rc "$HOME/.bashrc" \
-                "source $INSTALL_DIR/shell/$NAME.sh"
-            ;;
-        *)
-            warn "couldn't detect shell from \$SHELL=${SHELL:-}; add the source line manually"
-            ;;
-    esac
+
+    # Wire every shell the user has configured on this box. $SHELL is the
+    # login shell, which often disagrees with the interactive shell (e.g.
+    # $SHELL=zsh while the user lives in fish), so we don't trust it alone.
+    wired=0
+    posix_line="source $INSTALL_DIR/shell/$NAME.sh"
+
+    if [ -d "${XDG_CONFIG_HOME:-$HOME/.config}/fish" ] || command -v fish >/dev/null 2>&1; then
+        wire_fish
+        wired=1
+    fi
+    if [ -f "$HOME/.zshrc" ] || command -v zsh >/dev/null 2>&1; then
+        wire_posix_rc "$HOME/.zshrc" "$posix_line"
+        wired=1
+    fi
+    if [ -f "$HOME/.bashrc" ] || command -v bash >/dev/null 2>&1; then
+        wire_posix_rc "$HOME/.bashrc" "$posix_line"
+        wired=1
+    fi
+
+    if [ "$wired" -eq 0 ]; then
+        warn "no supported shell detected; add the source line manually"
+    fi
 }
 
 print_done_hint() {
