@@ -25,7 +25,7 @@ The installer:
 
 - ensures `fzf` and `fd` are installed (via your package manager),
 - clones bootfire to `~/.local/share/bootfire`,
-- symlinks `bootfire-core` into `~/.local/bin`,
+- symlinks the `bootfire` binary into `~/.local/bin`,
 - copies default config to `~/.config/bootfire/`,
 - prints the `source` line to add to your shell rc.
 
@@ -122,7 +122,7 @@ make uninstall
 Or remove the symlink and install dir manually:
 
 ```sh
-rm ~/.local/bin/bootfire-core
+rm ~/.local/bin/bootfire
 rm -rf ~/.local/share/bootfire
 ```
 

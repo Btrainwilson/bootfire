@@ -40,7 +40,7 @@ bootfire --edit          # open config in $EDITOR
 
 ## How it works (in two paragraphs)
 
-`bootfire-core` is a POSIX shell script that walks each configured root
+The `bootfire` binary is a POSIX shell script that walks each configured root
 with `fd` (so each repo's `.gitignore` is respected, plus a global ignore
 file at `~/.config/bootfire/ignore`), scores candidates by frecency, and
 hands the ranked list to `fzf`. It prints the selected path and exits.

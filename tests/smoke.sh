@@ -5,7 +5,7 @@
 set -eu
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
-CORE="$REPO/bin/bootfire-core"
+CORE="$REPO/bin/bootfire"
 chmod +x "$CORE"
 
 tmp="$(mktemp -d)"
@@ -58,10 +58,10 @@ export XDG_DATA_HOME='$XDG_DATA_HOME'
 export PATH='$REPO/bin:$PATH'
 source '$REPO/shell/bootfire.sh'
 # Drive the wrapper with a deterministic single-match filter
-target="\$(command bootfire-core --filter=gamma | head -n1)"
+target="\$(command bootfire --filter=gamma | head -n1)"
 [ -n "\$target" ] || { echo "FAIL: no target"; exit 1; }
 cd -- "\$target"
-command bootfire-core --bump "\$target"
+command bootfire --bump "\$target"
 [ -x ./start.sh ] && ./start.sh
 [ "\$PWD" = '$tmp/roots/gamma' ] || { echo "FAIL: pwd is \$PWD"; exit 1; }
 [ -f '$tmp/marker' ] || { echo "FAIL: start.sh did not run"; exit 1; }

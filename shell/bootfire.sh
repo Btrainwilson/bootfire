@@ -4,8 +4,8 @@
 bootfire() {
     if [ $# -gt 0 ]; then
         case "$1" in
-            add|rm|list|--edit|-h|--help)
-                command bootfire-core "$@"
+            add|rm|list|--edit|-h|--help|--bump)
+                command bootfire "$@"
                 return $?
                 ;;
         esac
@@ -22,10 +22,10 @@ bootfire() {
     done
 
     local target
-    target="$(command bootfire-core "${forward[@]}")"
+    target="$(command bootfire "${forward[@]}")"
     [ -n "$target" ] || return 0
     cd -- "$target" || return $?
-    command bootfire-core --bump "$target"
+    command bootfire --bump "$target"
     if [ "$cd_only" -eq 0 ] && [ -x ./start.sh ]; then
         ./start.sh
     fi

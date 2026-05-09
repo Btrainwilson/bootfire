@@ -87,9 +87,9 @@ local M = {}
 
 function M.pick(opts)
   opts = opts or {}
-  local handle = io.popen('BOOTFIRE_PRINT_CANDIDATES=1 bootfire-core 2>/dev/null')
+  local handle = io.popen('BOOTFIRE_PRINT_CANDIDATES=1 bootfire 2>/dev/null')
   if not handle then
-    vim.notify('bootfire-core not found', vim.log.levels.ERROR)
+    vim.notify('bootfire not found', vim.log.levels.ERROR)
     return
   end
   local lines = {}
@@ -106,7 +106,7 @@ function M.pick(opts)
         local picked = action_state.get_selected_entry()[1]
         if picked then
           vim.cmd('cd ' .. vim.fn.fnameescape(picked))
-          os.execute('bootfire-core --bump ' .. vim.fn.shellescape(picked))
+          os.execute('bootfire --bump ' .. vim.fn.shellescape(picked))
         end
       end)
       return true
@@ -138,11 +138,11 @@ No plugin, no Lua. Works in vim and neovim:
 ```vim
 command! Bootfire call s:bootfire()
 function! s:bootfire() abort
-  let l:dir = system('bootfire-core --filter='''' | head -n1')
+  let l:dir = system('bootfire --filter='''' | head -n1')
   let l:dir = substitute(l:dir, '\n$', '', '')
   if !empty(l:dir)
     execute 'cd' fnameescape(l:dir)
-    call system('bootfire-core --bump ' . shellescape(l:dir))
+    call system('bootfire --bump ' . shellescape(l:dir))
   endif
 endfunction
 ```

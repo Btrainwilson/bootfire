@@ -78,8 +78,8 @@ fetch_repo() {
 
 install_files() {
     mkdir -p "$BIN_DIR" "$CONFIG_DIR"
-    chmod +x "$INSTALL_DIR/bin/$NAME-core"
-    ln -sf "$INSTALL_DIR/bin/$NAME-core" "$BIN_DIR/$NAME-core"
+    chmod +x "$INSTALL_DIR/bin/$NAME"
+    ln -sf "$INSTALL_DIR/bin/$NAME" "$BIN_DIR/$NAME"
     [ -e "$CONFIG_DIR/config" ] || cp "$INSTALL_DIR/share/default-config" "$CONFIG_DIR/config"
     [ -e "$CONFIG_DIR/ignore" ] || cp "$INSTALL_DIR/share/default-ignore" "$CONFIG_DIR/ignore"
 }

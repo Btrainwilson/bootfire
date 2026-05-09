@@ -5,7 +5,7 @@
 set -eu
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
-CORE="$REPO/bin/bootfire-core"
+CORE="$REPO/bin/bootfire"
 chmod +x "$CORE"
 
 tmp="$(mktemp -d)"
