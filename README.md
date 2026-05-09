@@ -16,7 +16,18 @@ curl -fsSL https://btrainwilson.github.io/bootfire/install.sh | sh
 
 The installer ensures `fzf` and `fd` are present, clones bootfire to
 `~/.local/share/bootfire`, symlinks the binary into `~/.local/bin`,
-and copies the default config to `~/.config/bootfire/`.
+copies the default config to `~/.config/bootfire/`, and wires the
+shell hook (detected from `$SHELL`):
+
+- **fish** → drops `~/.config/fish/conf.d/bootfire.fish` (auto-sourced
+  by fish; no rc edits)
+- **bash / zsh** → writes a sentinel-marked block in `~/.bashrc` /
+  `~/.zshrc`. Reinstalls *replace* the block instead of stacking
+  duplicate lines
+
+Set `BOOTFIRE_NO_SHELL_HOOK=1` to skip the hook. The hook is what
+makes `bootfire` a shell function — needed because a standalone
+binary can't `cd` your shell from the outside.
 
 <details><summary>Manual install</summary>
 
@@ -27,15 +38,14 @@ make install
 ```
 
 You'll need `fzf` and `fd` yourself. On Debian/Ubuntu, `fd` is
-packaged as `fd-find` — symlink it as `fd`.
-
-</details>
-
-Then add **one** of these to your shell rc:
+packaged as `fd-find` — symlink it as `fd`. `make install` does not
+wire the shell hook; do one of:
 
 ```fish
-# ~/.config/fish/config.fish
-source ~/.local/share/bootfire/shell/bootfire.fish
+# fish
+mkdir -p ~/.config/fish/conf.d
+echo 'source ~/.local/share/bootfire/shell/bootfire.fish' \
+    > ~/.config/fish/conf.d/bootfire.fish
 ```
 
 ```sh
@@ -43,8 +53,7 @@ source ~/.local/share/bootfire/shell/bootfire.fish
 source ~/.local/share/bootfire/shell/bootfire.sh
 ```
 
-The hook is what makes `bootfire` a shell function — needed because a
-standalone binary can't `cd` your shell from the outside.
+</details>
 
 ---
 
@@ -329,6 +338,8 @@ Or manually:
 ```sh
 rm ~/.local/bin/bootfire
 rm -rf ~/.local/share/bootfire
+rm -f ~/.config/fish/conf.d/bootfire.fish    # if you used fish
+# bash/zsh: remove the '# >>> bootfire >>>' block from your rc
 ```
 
 Config is left in place. Remove `~/.config/bootfire` for a full wipe.

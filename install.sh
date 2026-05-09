@@ -89,28 +89,76 @@ install_files() {
     [ -e "$CONFIG_DIR/ignore" ] || cp "$INSTALL_DIR/share/default-ignore" "$CONFIG_DIR/ignore"
 }
 
-print_shell_hint() {
-    printf '\n'
-    say "installed at $INSTALL_DIR"
+SENTINEL_START="# >>> bootfire >>>"
+SENTINEL_END="# <<< bootfire <<<"
+
+# Drop a file in fish conf.d (fish auto-sources every *.fish there).
+# No rc edits, removable by `rm`.
+wire_fish() {
+    fish_conf_d="${XDG_CONFIG_HOME:-$HOME/.config}/fish/conf.d"
+    mkdir -p "$fish_conf_d"
+    target="$fish_conf_d/$NAME.fish"
+    printf 'source %s/shell/%s.fish\n' "$INSTALL_DIR" "$NAME" > "$target"
+    say "wrote fish conf.d hook: $target"
+}
+
+# Replace (not append) a sentinel-marked block in an rc file.
+# Idempotent: reinstall rewrites the block instead of stacking copies.
+wire_posix_rc() {
+    rc="$1"
+    line="$2"
+    [ -f "$rc" ] || : > "$rc"
+    tmp="$(mktemp)"
+    awk -v s="$SENTINEL_START" -v e="$SENTINEL_END" '
+        $0 == s { skip = 1; next }
+        $0 == e { skip = 0; next }
+        !skip
+    ' "$rc" > "$tmp"
+    {
+        cat "$tmp"
+        printf '%s\n' "$SENTINEL_START"
+        printf '%s\n' "$line"
+        printf '%s\n' "$SENTINEL_END"
+    } > "$rc"
+    rm -f "$tmp"
+    say "wrote bootfire block in $rc"
+}
+
+wire_shell_hook() {
+    if [ "${BOOTFIRE_NO_SHELL_HOOK:-0}" = "1" ]; then
+        say "skipping shell hook (BOOTFIRE_NO_SHELL_HOOK=1)"
+        return 0
+    fi
     case "${SHELL:-}" in
         */fish)
-            printf '\nAdd to ~/.config/fish/config.fish:\n  source %s/shell/%s.fish\n' "$INSTALL_DIR" "$NAME"
+            wire_fish
             ;;
         */zsh)
-            printf '\nAdd to ~/.zshrc:\n  source %s/shell/%s.sh\n' "$INSTALL_DIR" "$NAME"
+            wire_posix_rc "$HOME/.zshrc" \
+                "source $INSTALL_DIR/shell/$NAME.sh"
+            ;;
+        */bash)
+            wire_posix_rc "$HOME/.bashrc" \
+                "source $INSTALL_DIR/shell/$NAME.sh"
             ;;
         *)
-            printf '\nAdd to ~/.bashrc (or your shell rc):\n  source %s/shell/%s.sh\n' "$INSTALL_DIR" "$NAME"
+            warn "couldn't detect shell from \$SHELL=${SHELL:-}; add the source line manually"
             ;;
     esac
+}
+
+print_done_hint() {
+    printf '\n'
+    say "installed at $INSTALL_DIR"
     case ":$PATH:" in
         *":$BIN_DIR:"*) ;;
-        *) printf '\n'; warn "$BIN_DIR is not on \$PATH — add it before sourcing the shell file." ;;
+        *) warn "$BIN_DIR is not on \$PATH — add it to your shell rc" ;;
     esac
-    printf '\nThen open a new shell, run `%s add <project-root>`, and `%s` to deploy.\n' "$NAME" "$NAME"
+    printf '\nOpen a new shell, run `%s add <project-root>`, then `%s` to deploy.\n' "$NAME" "$NAME"
 }
 
 ensure_deps
 fetch_repo
 install_files
-print_shell_hint
+wire_shell_hook
+print_done_hint
