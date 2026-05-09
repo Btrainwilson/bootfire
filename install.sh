@@ -70,6 +70,11 @@ fetch_repo() {
         git -C "$INSTALL_DIR" fetch --depth 1 origin "$BRANCH"
         git -C "$INSTALL_DIR" reset --hard "origin/$BRANCH"
     else
+        if [ -e "$INSTALL_DIR" ]; then
+            backup="$INSTALL_DIR.bak.$(date +%s)"
+            warn "$INSTALL_DIR exists but isn't a git checkout — moving to $backup"
+            mv "$INSTALL_DIR" "$backup"
+        fi
         say "cloning $REPO_URL into $INSTALL_DIR"
         mkdir -p "$(dirname "$INSTALL_DIR")"
         git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$INSTALL_DIR"
