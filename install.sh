@@ -5,7 +5,7 @@
 set -eu
 
 NAME="bootfire"
-REPO_URL="${BOOTFIRE_REPO_URL:-https://github.com/CHANGE_ME/bootfire.git}"
+REPO_URL="${BOOTFIRE_REPO_URL:-https://github.com/btrainwilson/bootfire.git}"
 BRANCH="${BOOTFIRE_BRANCH:-main}"
 INSTALL_DIR="${BOOTFIRE_INSTALL_DIR:-$HOME/.local/share/$NAME}"
 BIN_DIR="${BOOTFIRE_BIN_DIR:-$HOME/.local/bin}"
