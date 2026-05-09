@@ -62,6 +62,7 @@ source ~/.local/share/bootfire/shell/bootfire.sh
 | Command | What it does |
 |---|---|
 | `bootfire` | fuzzy-pick → `cd` → source `./start.sh` if present |
+| `bootfire <path>` | fuzzy-pick within `<path>` only (bypasses configured roots; e.g. `bootfire .`) |
 | `bootfire -c`, `--cd-only` | `cd`-only, skip `start.sh` |
 | `bootfire add <path>` | register a project root |
 | `bootfire rm <path>` | remove a project root |

@@ -51,6 +51,7 @@ $NAME — fuzzy-find a project directory and run its start.sh
 
 Usage:
   $NAME                   fuzzy-find and deploy
+  $NAME <path>            fuzzy-find within <path> only (bypasses configured roots)
   $NAME -c, --cd-only     fuzzy-find and cd only (skip start.sh)
   $NAME add <path>        add a project root to the config
   $NAME rm <path>         remove a project root from the config
@@ -110,12 +111,22 @@ cmd_select() {
     require fd
     require fzf
 
-    [ -f "$CONFIG_FILE" ] || {
-        printf '%s: no config at %s\n' "$NAME" "$CONFIG_FILE" >&2
-        printf 'Run `%s add <path>` to add a project root.\n' "$NAME" >&2
-        exit 1
-    }
     ensure_config_dir
+
+    # Pull the first existing-directory arg out of "$@" — that's the
+    # local-path scope. Remaining args pass through to fzf.
+    local_root=""
+    n=$#
+    while [ "$n" -gt 0 ]; do
+        arg="$1"
+        shift
+        if [ -z "$local_root" ] && [ -d "$arg" ]; then
+            local_root="$(cd "$arg" && pwd)"
+        else
+            set -- "$@" "$arg"
+        fi
+        n=$((n - 1))
+    done
 
     max_depth="$(get_setting max_depth 4)"
 
@@ -123,10 +134,19 @@ cmd_select() {
     candidates="$(mktemp)"
     trap 'rm -f "$roots_tmp" "$candidates"' EXIT
 
-    get_roots > "$roots_tmp"
-    if [ ! -s "$roots_tmp" ]; then
-        printf '%s: no roots configured. Run `%s add <path>`.\n' "$NAME" "$NAME" >&2
-        exit 1
+    if [ -n "$local_root" ]; then
+        printf '%s\n' "$local_root" > "$roots_tmp"
+    else
+        [ -f "$CONFIG_FILE" ] || {
+            printf '%s: no config at %s\n' "$NAME" "$CONFIG_FILE" >&2
+            printf 'Run `%s add <path>` to add a project root, or pass a path: `%s <dir>`.\n' "$NAME" "$NAME" >&2
+            exit 1
+        }
+        get_roots > "$roots_tmp"
+        if [ ! -s "$roots_tmp" ]; then
+            printf '%s: no roots configured. Run `%s add <path>` or pass a path: `%s <dir>`.\n' "$NAME" "$NAME" "$NAME" >&2
+            exit 1
+        fi
     fi
 
     fd_args="--type d --hidden --max-depth $max_depth"
@@ -143,7 +163,11 @@ cmd_select() {
     done < "$roots_tmp"
 
     if [ ! -s "$candidates" ]; then
-        printf '%s: no directories found under configured roots.\n' "$NAME" >&2
+        if [ -n "$local_root" ]; then
+            printf '%s: no directories found under %s.\n' "$NAME" "$local_root" >&2
+        else
+            printf '%s: no directories found under configured roots.\n' "$NAME" >&2
+        fi
         exit 1
     fi
 

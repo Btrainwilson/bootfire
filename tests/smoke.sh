@@ -91,4 +91,23 @@ remaining="$("$CORE" list || true)"
 [ -z "$remaining" ] || fail "rm left entries: '$remaining'"
 pass "rm clears the root"
 
+# 8. local path mode: bootfire <dir> works without any configured roots
+selected="$("$CORE" "$tmp/roots" --filter=alpha | head -n1)"
+case "$selected" in
+    *roots/alpha) pass "local path mode: bootfire <abs path>" ;;
+    *) fail "local path mode: expected alpha, got '$selected'" ;;
+esac
+
+# 9. local path mode resolves relative paths (e.g. `bootfire .`)
+selected="$(cd "$tmp/roots" && "$CORE" . --filter=beta | head -n1)"
+case "$selected" in
+    *roots/beta) pass "local path mode: bootfire ." ;;
+    *) fail "local path mode rel: expected beta, got '$selected'" ;;
+esac
+
+# 10. local path mode includes the path itself as a candidate
+candidates="$(BOOTFIRE_PRINT_CANDIDATES=1 "$CORE" "$tmp/roots/alpha")"
+printf '%s\n' "$candidates" | grep -qx "$tmp/roots/alpha" || fail "local path mode missing root itself"
+pass "local path mode includes the root"
+
 printf '\n== smoke.sh: ALL PASSED ==\n'
