@@ -100,7 +100,10 @@ cmd_list() {
 cmd_edit() {
     ensure_config_dir
     [ -f "$CONFIG_FILE" ] || : > "$CONFIG_FILE"
-    "${EDITOR:-vi}" "$CONFIG_FILE"
+    editor="$(get_setting editor "")"
+    [ -n "$editor" ] || editor="${EDITOR:-vi}"
+    # shellcheck disable=SC2086
+    $editor "$CONFIG_FILE"
 }
 
 cmd_select() {

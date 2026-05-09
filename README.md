@@ -87,6 +87,7 @@ your shell.
 root=~
 max_depth=4
 start_script=start.sh
+editor=
 ```
 
 | Field | Meaning | Default |
@@ -94,6 +95,7 @@ start_script=start.sh
 | `root=` | a project-roots line; tildes expanded; can repeat | (at least one is required) |
 | `max_depth` | how many levels to walk under each root | `4` |
 | `start_script` | name of the script to source after `cd` | `start.sh` |
+| `editor` | command for `bootfire --edit`; word-split, so flags work (e.g. `code --wait`) | `$EDITOR`, then `vi` |
 
 Use `bootfire add <path>` and `bootfire rm <path>` to manage roots
 without editing the file by hand. `bootfire --edit` opens it in

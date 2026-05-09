@@ -12,3 +12,8 @@ max_depth=4
 # directory. It is sourced (not executed) so any cd / env changes persist.
 # Set to an empty value to disable.
 start_script=start.sh
+
+# Editor used by `bootfire --edit`. Word-split, so flags are fine
+# (e.g. `code --wait` or `nvim -p`). If empty, $EDITOR is used,
+# falling back to `vi`.
+editor=
