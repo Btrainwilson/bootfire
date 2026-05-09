@@ -54,16 +54,22 @@ automatically).
 
 | Command | What it does |
 |---|---|
-| `bootfire` | fuzzy-pick → `cd` → run `./start.sh` if present |
+| `bootfire` | fuzzy-pick → `cd` → source `./start.sh` if present |
 | `bootfire -c` | `cd`-only, skip `start.sh` |
 | `bootfire add <path>` | register a project root |
 | `bootfire rm <path>` | remove a project root |
 | `bootfire list` | print configured roots |
 | `bootfire --edit` | open the config in `$EDITOR` |
 
-Drop a `start.sh` in any project. It runs after `cd`. Whatever boot
-ritual you want — dev server, tmux windows, virtualenv — goes inside
-that script. bootfire stays out of your way.
+Drop a `start.sh` in any project. It's **sourced** after `cd`, so any
+env changes (venv activation, exported vars, deeper `cd`s) persist in
+your shell. Whatever boot ritual you want — dev server, tmux windows,
+virtualenv — goes inside that script. bootfire stays out of your way.
+
+> [!NOTE]
+> Because `start.sh` is sourced, it must be syntactically valid in
+> your shell. Bash/zsh source POSIX `sh` fine; **fish** users need a
+> fish-syntax `start.sh`.
 
 > [!NOTE]
 > See **[Integrations](https://btrainwilson.github.io/bootfire/integrations/)** for working `start.sh` snippets:
@@ -74,21 +80,11 @@ that script. bootfire stays out of your way.
 
 ## How ranking works
 
-Candidates come from walking each configured root with `fd` (so each
-repo's `.gitignore` is respected, plus the global ignore at
-`~/.config/bootfire/ignore`). Each candidate is scored by frecency:
-
-| Age of last visit | Weight |
-|---|---|
-| < 1 hour | 4.0 |
-| < 1 day  | 2.0 |
-| < 7 days | 1.0 |
-| ≥ 7 days | 0.25 |
-
-Score is `count * weight`. Frecency updates **only** when bootfire
-itself selects a directory — no shell hooks. New directories start at
-score 0 and rank by alphabetical fall-through. `fzf` orders by match
-quality first; frecency breaks ties (`--tiebreak=index`).
+There is no ranking. Candidates come from walking each configured
+root with `fd` (so each repo's `.gitignore` is respected, plus the
+global ignore at `~/.config/bootfire/ignore`), and `fzf` orders them
+by match quality against what you type. No usage tracking, no shell
+hooks.
 
 Full rationale: [How it works](https://btrainwilson.github.io/bootfire/how-it-works/).
 
@@ -99,15 +95,13 @@ Full rationale: [How it works](https://btrainwilson.github.io/bootfire/how-it-wo
 `~/.config/bootfire/config`:
 
 ```
-root=~/code
-root=~/work
+root=~
 max_depth=4
 start_script=start.sh
 ```
 
 `~/.config/bootfire/ignore` is `.gitignore`-style; layered on top of
-each repo's own `.gitignore`. Frecency data lives at
-`~/.local/share/bootfire/frecency` (TSV: `path<TAB>count<TAB>last_ts`).
+each repo's own `.gitignore`.
 
 ---
 
@@ -128,8 +122,8 @@ each repo's own `.gitignore`. Frecency data lives at
 make test
 ```
 
-Runs the frecency unit test and the end-to-end smoke test against an
-isolated XDG home — won't touch your real config.
+Runs the end-to-end smoke test against an isolated XDG home — won't
+touch your real config.
 </details>
 
 <details><summary>Uninstall</summary>
@@ -145,8 +139,7 @@ rm ~/.local/bin/bootfire
 rm -rf ~/.local/share/bootfire
 ```
 
-Config and frecency data are left in place. Remove
-`~/.config/bootfire` and `~/.local/share/bootfire` for a full wipe.
+Config is left in place. Remove `~/.config/bootfire` for a full wipe.
 </details>
 
 ---

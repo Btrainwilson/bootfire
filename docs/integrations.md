@@ -108,7 +108,6 @@ function M.pick(opts)
         local picked = action_state.get_selected_entry()[1]
         if picked then
           vim.cmd('cd ' .. vim.fn.fnameescape(picked))
-          os.execute('bootfire --bump ' .. vim.fn.shellescape(picked))
         end
       end)
       return true
@@ -128,7 +127,7 @@ end, { desc = 'bootfire pick' })
 ```
 
 The picker uses `BOOTFIRE_PRINT_CANDIDATES=1` so the core prints its
-ranked candidate list without invoking fzf — telescope handles fuzzy
+candidate list without invoking fzf — telescope handles fuzzy
 matching.
 
 ---
@@ -144,7 +143,6 @@ function! s:bootfire() abort
   let l:dir = substitute(l:dir, '\n$', '', '')
   if !empty(l:dir)
     execute 'cd' fnameescape(l:dir)
-    call system('bootfire --bump ' . shellescape(l:dir))
   endif
 endfunction
 ```

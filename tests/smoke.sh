@@ -44,42 +44,48 @@ case "$selected" in
     *) fail "expected beta, got '$selected'" ;;
 esac
 
-# 4. bash wrapper: cd into selection and run start.sh
-cat > "$tmp/roots/gamma/start.sh" <<EOF
-#!/bin/sh
-echo started-gamma > "$tmp/marker"
+# 4. candidate list contains all three roots, deduped
+candidates="$(BOOTFIRE_PRINT_CANDIDATES=1 "$CORE")"
+for d in alpha beta gamma; do
+    printf '%s\n' "$candidates" | grep -q "roots/$d$" || fail "missing $d in candidates"
+done
+ndup="$(printf '%s\n' "$candidates" | sort | uniq -d | wc -l)"
+[ "$ndup" -eq 0 ] || fail "duplicates in candidates"
+pass "candidates include all roots, deduped"
+
+# 5. bash wrapper: cd into selection and source start.sh (env persists)
+cat > "$tmp/roots/gamma/start.sh" <<'EOF'
+echo started-gamma > "$MARKER"
+export BOOTFIRE_TEST_VAR=activated
 EOF
-chmod +x "$tmp/roots/gamma/start.sh"
 
 bash <<EOF
 set -eu
 export XDG_CONFIG_HOME='$XDG_CONFIG_HOME'
 export XDG_DATA_HOME='$XDG_DATA_HOME'
 export PATH='$REPO/bin:$PATH'
+export MARKER='$tmp/marker'
 source '$REPO/shell/bootfire.sh'
-# Drive the wrapper with a deterministic single-match filter
 target="\$(command bootfire --filter=gamma | head -n1)"
 [ -n "\$target" ] || { echo "FAIL: no target"; exit 1; }
 cd -- "\$target"
-command bootfire --bump "\$target"
-[ -x ./start.sh ] && ./start.sh
+[ -r ./start.sh ] && . ./start.sh
 [ "\$PWD" = '$tmp/roots/gamma' ] || { echo "FAIL: pwd is \$PWD"; exit 1; }
 [ -f '$tmp/marker' ] || { echo "FAIL: start.sh did not run"; exit 1; }
+[ "\$BOOTFIRE_TEST_VAR" = activated ] || { echo "FAIL: env var did not persist"; exit 1; }
 EOF
-pass "bash wrapper logic: cd + run start.sh"
+pass "bash wrapper: cd + source start.sh (env persists)"
 
-# 5. --cd-only flag is filtered out by the wrapper
+# 6. --cd-only flag is filtered out by the wrapper
 rm -f "$tmp/marker"
 bash <<EOF
 set -eu
 source '$REPO/shell/bootfire.sh'
-# Inspect the bootfire function definition: it must filter -c/--cd-only
-# from args before forwarding to core.
 typeset -f bootfire | grep -q -- '--cd-only' || { echo "FAIL: wrapper missing --cd-only handling"; exit 1; }
 EOF
 pass "wrapper handles --cd-only flag"
 
-# 6. rm removes the root
+# 7. rm removes the root
 "$CORE" rm "$tmp/roots" >/dev/null
 remaining="$("$CORE" list || true)"
 [ -z "$remaining" ] || fail "rm left entries: '$remaining'"

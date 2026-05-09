@@ -2,13 +2,13 @@
 #
 # Project roots to search. One per line. Tildes are expanded.
 # Add more with: bootfire add <path>
-root=~/code
-root=~/work
+root=~
 
 # How deep to walk under each root. Higher = slower but finds more nested
 # projects.
 max_depth=4
 
-# Script to run after cd, when present and executable in the chosen
-# directory. Set to an empty value to disable.
+# Script to run after cd, when present and readable in the chosen
+# directory. It is sourced (not executed) so any cd / env changes persist.
+# Set to an empty value to disable.
 start_script=start.sh

@@ -81,9 +81,8 @@ rm ~/.local/bin/bootfire
 rm -rf ~/.local/share/bootfire
 ```
 
-Config and frecency data are left in place. Remove them too if you
-want a full wipe:
+Config is left in place. Remove it too for a full wipe:
 
 ```sh
-rm -rf ~/.config/bootfire ~/.local/share/bootfire
+rm -rf ~/.config/bootfire
 ```

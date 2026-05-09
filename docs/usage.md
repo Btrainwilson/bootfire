@@ -37,11 +37,11 @@ bootfire add ~/code            # one-time
 bootfire add ~/work
 bootfire                       # picker opens, type a few letters
                                # → cd into the match
-                               # → run start.sh if present
+                               # → source start.sh if present
 ```
 
-The directories you select most often float to the top. See
-[How it works](../how-it-works/) for the frecency formula.
+Ranking is just `fzf` match quality on what you type — no usage
+tracking. See [How it works](../how-it-works/) for the rest.
 
 ## See also
 

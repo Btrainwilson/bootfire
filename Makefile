@@ -26,8 +26,6 @@ uninstall:
 	rm -f $(BIN_DIR)/bootfire
 	rm -rf $(INSTALL_DIR)
 	@echo "Uninstalled. Config preserved at $(CONFIG_DIR)."
-	@echo "Frecency data at $(HOME)/.local/share/bootfire (remove manually if desired)."
 
 test:
-	./tests/frecency.sh
 	./tests/smoke.sh

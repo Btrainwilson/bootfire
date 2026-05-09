@@ -44,5 +44,5 @@ lives inside that script.
 - **[Config](./config/)** — config file format, ignore rules, paths.
 - **[Integrations](./integrations/)** — tmux, Neovim/telescope, zellij,
   direnv, mise, per-language templates.
-- **[How it works](./how-it-works/)** — the frecency math, the walker,
-  why no shell hooks.
+- **[How it works](./how-it-works/)** — the walker, the wrapper, why
+  no usage tracking.

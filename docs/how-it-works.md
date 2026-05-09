@@ -14,12 +14,12 @@ permalink: /how-it-works/
 
 The `bootfire` binary is a POSIX shell script that walks each
 configured root with `fd` (so each repo's `.gitignore` is respected,
-plus the global ignore at `~/.config/bootfire/ignore`), scores the
-candidates by frecency, and hands the ranked list to `fzf`. It prints
-the selected path and exits.
+plus the global ignore at `~/.config/bootfire/ignore`), dedups, and
+hands the candidate list to `fzf`. It prints the selected path and
+exits.
 
 A small fish or bash/zsh function wraps the binary so it can `cd` your
-shell into the chosen path and execute `./start.sh` if present. Tmux
+shell into the chosen path and `source ./start.sh` if present. Tmux
 windows, dev servers, virtualenv activation — anything you want to
 happen on entry — goes inside the project's own `start.sh`. bootfire
 never knows or cares about the contents.
@@ -28,50 +28,21 @@ never knows or cares about the contents.
 
 A standalone binary can't change the working directory of the shell
 that invoked it; the OS isolates child processes. The function lives
-inside your shell, so it can `cd`. The binary on `$PATH` is what the
-function (and editor integrations) shell out to for the picker.
+inside your shell, so it can `cd`, and it sources `start.sh` so any
+env changes (venv activation, exported vars, deeper `cd`s) persist in
+the calling shell rather than dying with a subshell.
 
-## Frecency
+## Ranking
 
-Each candidate is scored:
+There is none. `fzf` orders candidates by match quality against your
+query — that's the whole story. No frecency, no usage tracking, no
+shell hooks observing your `cd`s. New directories and old ones are on
+equal footing; what you type is what ranks them.
 
-```
-score = count * w(age)
-```
+## Shell compatibility for start.sh
 
-where `w(age)` is a step function on the time since you last picked
-the directory:
-
-| Age of last visit | Weight |
-|---|---|
-| < 1 hour | 4.0 |
-| < 1 day  | 2.0 |
-| < 7 days | 1.0 |
-| ≥ 7 days | 0.25 |
-
-Candidates that have never been picked score `0` and rank by the order
-`fd` returned them — alphabetical fall-through.
-
-Frecency only updates when bootfire itself selects a directory. There
-are no shell hooks observing every `cd` — that's a deliberate
-non-feature.
-
-## Why fzf with `--tiebreak=index`
-
-`fzf` reorders by match quality (how well your query string fits the
-candidate). Frecency only kicks in to break ties. This means typing
-`api` will surface `~/code/api-server` even if you've never picked it
-— but among equally-good matches, the one you visit most often wins.
-
-`--tiebreak=index` tells fzf to use the input order as the secondary
-sort key, and we hand fzf a list pre-sorted by frecency descending.
-Result: best fzf match first, frecency second.
-
-## Why no shell hooks
-
-Tools that hook into every `cd` (zoxide, autojump) need the user to
-install the hook. They also pollute the frecency store with every
-casual `cd` you make — including stops that aren't projects. bootfire
-opts out: only directories you deliberately pick get scored. The
-tradeoff is that frecency starts cold for new directories and warms up
-slower. We think it's worth it for the simpler mental model.
+Because the wrapper sources `start.sh` rather than executing it, the
+script must be syntactically valid in the calling shell. Bash and zsh
+both run POSIX `sh`-style scripts via `.`, so most `start.sh` files
+work unchanged. **For fish users:** `start.sh` must be fish syntax —
+`source` in fish only accepts fish.

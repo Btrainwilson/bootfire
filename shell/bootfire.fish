@@ -1,7 +1,7 @@
 function bootfire --description "Fuzzy-find a project directory and run start.sh"
     if test (count $argv) -gt 0
         switch $argv[1]
-            case add rm list --edit -h --help --bump
+            case add rm list --edit -h --help
                 command bootfire $argv
                 return $status
         end
@@ -21,8 +21,7 @@ function bootfire --description "Fuzzy-find a project directory and run start.sh
     set -l target (command bootfire $forward)
     test -z "$target"; and return 0
     cd "$target"; or return $status
-    command bootfire --bump "$target"
-    if test $cd_only -eq 0; and test -x ./start.sh
-        ./start.sh
+    if test $cd_only -eq 0; and test -r ./start.sh
+        source ./start.sh
     end
 end
