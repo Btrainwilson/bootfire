@@ -110,4 +110,25 @@ candidates="$(BOOTFIRE_PRINT_CANDIDATES=1 "$CORE" "$tmp/roots/alpha")"
 printf '%s\n' "$candidates" | grep -qx "$tmp/roots/alpha" || fail "local path mode missing root itself"
 pass "local path mode includes the root"
 
+# 11. stdin pipe: piped lines become the candidate set (no config needed)
+selected="$(printf '%s\n%s\n' "$tmp/roots/alpha" "$tmp/roots/beta" | "$CORE" --filter=beta | head -n1)"
+case "$selected" in
+    *roots/beta) pass "stdin pipe: lines become candidates" ;;
+    *) fail "stdin pipe: expected beta, got '$selected'" ;;
+esac
+
+# 12. stdin pipe + local path: intersection (only piped paths under the path)
+piped="$(printf '%s\n%s\n%s\n' "$tmp/roots/alpha" "$tmp/roots/beta" "/elsewhere/zeta")"
+out="$(printf '%s\n' "$piped" | BOOTFIRE_PRINT_CANDIDATES=1 "$CORE" "$tmp/roots/alpha")"
+printf '%s\n' "$out" | grep -qx "$tmp/roots/alpha" || fail "intersection: alpha missing"
+printf '%s\n' "$out" | grep -qx "$tmp/roots/beta" && fail "intersection: beta should be filtered out"
+printf '%s\n' "$out" | grep -qx "/elsewhere/zeta" && fail "intersection: zeta should be filtered out"
+pass "stdin pipe ∩ local path"
+
+# 13. stdin pipe doesn't require fd or config to run
+rm -f "$XDG_CONFIG_HOME/bootfire/config"
+selected="$(printf '/some/dir\n' | "$CORE" --filter=some | head -n1)"
+[ "$selected" = "/some/dir" ] || fail "stdin without config: expected /some/dir, got '$selected'"
+pass "stdin pipe works without config"
+
 printf '\n== smoke.sh: ALL PASSED ==\n'

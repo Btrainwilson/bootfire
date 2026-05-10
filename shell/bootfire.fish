@@ -18,7 +18,21 @@ function bootfire --description "Fuzzy-find a project directory and run start.sh
         end
     end
 
-    set -l target (command bootfire $forward)
+    # fish does not propagate stdin into `(...)` command substitution,
+    # so capture piped lines here and re-pipe them into the binary.
+    set -l stdin_lines
+    if not isatty stdin
+        while read -l line
+            set -a stdin_lines $line
+        end
+    end
+
+    set -l target
+    if test (count $stdin_lines) -gt 0
+        set target (printf '%s\n' $stdin_lines | command bootfire $forward)
+    else
+        set target (command bootfire $forward)
+    end
     test -z "$target"; and return 0
     cd "$target"; or return $status
     if test $cd_only -eq 0; and test -r ./start.sh

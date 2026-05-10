@@ -52,6 +52,8 @@ $NAME — fuzzy-find a project directory and run its start.sh
 Usage:
   $NAME                   fuzzy-find and deploy
   $NAME <path>            fuzzy-find within <path> only (bypasses configured roots)
+  cmd | $NAME             use piped lines as candidates (bypasses fd walk)
+  cmd | $NAME <path>      pipe ∩ <path> — keep only piped lines under <path>
   $NAME -c, --cd-only     fuzzy-find and cd only (skip start.sh)
   $NAME add <path>        add a project root to the config
   $NAME rm <path>         remove a project root from the config
@@ -108,7 +110,6 @@ cmd_edit() {
 }
 
 cmd_select() {
-    require fd
     require fzf
 
     ensure_config_dir
@@ -128,42 +129,60 @@ cmd_select() {
         n=$((n - 1))
     done
 
-    max_depth="$(get_setting max_depth 4)"
-
-    roots_tmp="$(mktemp)"
     candidates="$(mktemp)"
+    roots_tmp="$(mktemp)"
     trap 'rm -f "$roots_tmp" "$candidates"' EXIT
 
-    if [ -n "$local_root" ]; then
-        printf '%s\n' "$local_root" > "$roots_tmp"
-    else
-        [ -f "$CONFIG_FILE" ] || {
-            printf '%s: no config at %s\n' "$NAME" "$CONFIG_FILE" >&2
-            printf 'Run `%s add <path>` to add a project root, or pass a path: `%s <dir>`.\n' "$NAME" "$NAME" >&2
-            exit 1
-        }
-        get_roots > "$roots_tmp"
-        if [ ! -s "$roots_tmp" ]; then
-            printf '%s: no roots configured. Run `%s add <path>` or pass a path: `%s <dir>`.\n' "$NAME" "$NAME" "$NAME" >&2
-            exit 1
+    # Source 1: stdin pipe. Each line is a candidate path. Honors a
+    # local_root, if given, by keeping only lines under that prefix —
+    # this is the "pipe ∩ local path" intersection mode.
+    if [ -p /dev/stdin ]; then
+        if [ -n "$local_root" ]; then
+            awk -v r="$local_root" '
+                $0 == r || index($0, r "/") == 1
+            ' | sed 's|/$||' > "$candidates"
+        else
+            sed 's|/$||' > "$candidates"
         fi
-    fi
+    else
+        require fd
+        max_depth="$(get_setting max_depth 4)"
 
-    fd_args="--type d --hidden --max-depth $max_depth"
-    if [ -f "$IGNORE_FILE" ]; then
-        fd_args="$fd_args --ignore-file $IGNORE_FILE"
-    fi
+        if [ -n "$local_root" ]; then
+            printf '%s\n' "$local_root" > "$roots_tmp"
+        else
+            [ -f "$CONFIG_FILE" ] || {
+                printf '%s: no config at %s\n' "$NAME" "$CONFIG_FILE" >&2
+                printf 'Run `%s add <path>` to add a project root, or pass a path: `%s <dir>`.\n' "$NAME" "$NAME" >&2
+                exit 1
+            }
+            get_roots > "$roots_tmp"
+            if [ ! -s "$roots_tmp" ]; then
+                printf '%s: no roots configured. Run `%s add <path>` or pass a path: `%s <dir>`.\n' "$NAME" "$NAME" "$NAME" >&2
+                exit 1
+            fi
+        fi
 
-    while IFS= read -r root; do
-        [ -d "$root" ] || continue
-        root="${root%/}"
-        printf '%s\n' "$root" >> "$candidates"
-        # shellcheck disable=SC2086
-        fd $fd_args . "$root" 2>/dev/null | sed 's|/$||' >> "$candidates" || true
-    done < "$roots_tmp"
+        fd_args="--type d --hidden --max-depth $max_depth"
+        if [ -f "$IGNORE_FILE" ]; then
+            fd_args="$fd_args --ignore-file $IGNORE_FILE"
+        fi
+
+        while IFS= read -r root; do
+            [ -d "$root" ] || continue
+            root="${root%/}"
+            printf '%s\n' "$root" >> "$candidates"
+            # shellcheck disable=SC2086
+            fd $fd_args . "$root" 2>/dev/null | sed 's|/$||' >> "$candidates" || true
+        done < "$roots_tmp"
+    fi
 
     if [ ! -s "$candidates" ]; then
-        if [ -n "$local_root" ]; then
+        if [ -p /dev/stdin ] && [ -n "$local_root" ]; then
+            printf '%s: no piped paths under %s.\n' "$NAME" "$local_root" >&2
+        elif [ -p /dev/stdin ]; then
+            printf '%s: no candidates received on stdin.\n' "$NAME" >&2
+        elif [ -n "$local_root" ]; then
             printf '%s: no directories found under %s.\n' "$NAME" "$local_root" >&2
         else
             printf '%s: no directories found under configured roots.\n' "$NAME" >&2

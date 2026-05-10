@@ -63,12 +63,24 @@ source ~/.local/share/bootfire/shell/bootfire.sh
 |---|---|
 | `bootfire` | fuzzy-pick → `cd` → source `./start.sh` if present |
 | `bootfire <path>` | fuzzy-pick within `<path>` only (bypasses configured roots; e.g. `bootfire .`) |
+| `cmd \| bootfire` | use piped lines as candidates (bypasses the fd walk) |
+| `cmd \| bootfire <path>` | pipe ∩ `<path>` — keep only piped lines under `<path>` |
 | `bootfire -c`, `--cd-only` | `cd`-only, skip `start.sh` |
 | `bootfire add <path>` | register a project root |
 | `bootfire rm <path>` | remove a project root |
 | `bootfire list` | print configured roots |
 | `bootfire --edit` | open the config in `$EDITOR` |
 | `bootfire -h`, `--help` | show help |
+
+Pipe examples:
+
+```sh
+# pick from your git worktrees
+git worktree list | awk '{print $1}' | bootfire
+
+# pick from recently-modified dirs only, scoped under ~/code
+find ~ -type d -mtime -1 | bootfire ~/code
+```
 
 Drop a `start.sh` in any project. It's **sourced** after `cd`, so any
 env changes (venv activation, exported vars, deeper `cd`s) persist in
